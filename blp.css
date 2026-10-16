@@ -1,0 +1,1572 @@
+/* =============================================================================
+   BLP WINDOW - v1.0
+   -----------------------------------------------------------------------------
+   "창이 곧 문법이다."
+
+   이 파일이 BLP Window 디자인 언어의 단일 진실 원천(single source of truth)이다.
+   규칙은 HTML이 아니라 여기 토큰에 있다. 문서(README)는 이 값을 설명할 뿐,
+   값을 다시 선언하지 않는다.
+
+   -- 파싱 순서 --------------------------------------------------------------
+     0. 머리말 · 규칙 목록
+     1. 토큰 (:root) / 라이트모드
+     2. 리셋 · 베이스 타이포
+     3. 배경 레이어 (단색 / 이미지 / 영상)
+     4. 창 (Window)
+     5. 창 안 디스플레이 텍스트 (좌측 · 우측)
+     6. 색깔 요소 (Fill)
+     7. 태두리 요소 (Border)
+     8. 모서리 법칙 (36px)
+     9. 창 안/밖 분리 효과
+    10. 레이아웃 유틸
+    11. 다이어그램 전용 수정자 (규격선)
+    12. 스펙 표 · 코드
+    13. 반응형 · 모션 · 인쇄
+
+   -- 금지 (BLP 절대 규칙) ---------------------------------------------------
+     · 이모지를 쓰지 않는다. 아이콘이 필요하면 인라인 SVG + currentColor.
+     · 창에 fill(배경색)을 넣지 않는다. 투명 유지.
+     · 창의 모서리를 둥글게 만들지 않는다. 반경 0 고정.
+     · 요소가 클릭 전후에 새로 나타나거나 사라지지 않는다. 전부 처음부터 DOM에 존재.
+     · 이 파일과 페이지에는 JavaScript가 없다. 상태는 전부 CSS 상태다.
+   ========================================================================== */
+
+
+/* =============================================================================
+   1. 토큰
+   ========================================================================== */
+
+:root {
+  /* -- 색상 --------------------------------------------------------------
+     두 색이 뒤집히면 라이트모드가 된다. 이게 전부다.
+     accent는 모드와 무관하게 고정. */
+  --blp-ink:        #000309;   /* 배경 · 어두운 면 · 어두운 글자 */
+  --blp-paper:      #fefeff;   /* 전경 · 밝은 면 · 창 태두리      */
+  --blp-accent:     #007bff;   /* 강조. 상태 표시 전용            */
+
+  /* -- 창 ----------------------------------------------------------------
+     기본 규격. 가로·세로는 용도에 따라 바꿀 수 있다(§4 참고). */
+  --blp-window-w:        600px;   /* 기본 가로 */
+  --blp-window-h:        800px;   /* 기본 세로 */
+  --blp-window-border:    20px;   /* 태두리 굵기 - 고정 */
+  --blp-window-radius:     0px;   /* 완전 각짐 - 고정, 변경 불가 */
+  --blp-window-gap:        8px;   /* 태두리와 내부 요소 사이 간격 - 고정 */
+
+  /* -- 타이포 ------------------------------------------------------------- */
+  --blp-display-size:     70px;   /* 창 안 좌측·우측 글자 크기 */
+  --blp-display-weight:  700;
+  --blp-text-size:        24px;   /* 웹 텍스트 기본 크기 */
+  --blp-text-weight:     600;
+
+  --blp-font: "Outfit", "Pretendard", "Noto Sans KR", sans-serif;
+  --blp-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", monospace;
+
+  /* -- 요소 --------------------------------------------------------------
+     모서리 법칙: 36px. 이 값 하나면 두 경우를 모두 처리한다.
+     높이가 72px 이하이면 브라우저가 절반으로 줄여 완전 둥글게 만들고,
+     그보다 크면 36px 로 남긴다. 퍼센트를 쓰지 않는다. (§8) */
+  --blp-radius-cap:       36px;
+  --blp-control-h:        36px;   /* 컨트롤 최소 높이 */
+  --blp-border-w:          4px;   /* 태두리 요소의 바깥 태두리 굵기 - 고정 */
+  --blp-rule:              2px;   /* 요소 "내부" 구분선. 바깥 태두리가 아니다 */
+
+  /* -- 모션 ---------------------------------------------------------------- */
+  --blp-ease: cubic-bezier(0.22, 0.61, 0.36, 1);
+  --blp-dur:   180ms;
+}
+
+/* 라이트모드 = fefeff 과 000309 을 교환. accent는 그대로.
+   본문 흐름을 바꾸지 않기 위해 <html data-theme="light"> 한 줄로만 전환한다. */
+[data-theme="light"] {
+  --blp-ink:   #fefeff;
+  --blp-paper: #000309;
+}
+
+
+/* =============================================================================
+   2. 리셋 · 베이스
+   ========================================================================== */
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  min-height: 100dvh;
+  background: var(--blp-ink);
+  color: var(--blp-paper);
+  font-family: var(--blp-font);
+  font-size: var(--blp-text-size);
+  font-weight: var(--blp-text-weight);
+  line-height: 1.5;
+  letter-spacing: -0.01em;
+  -webkit-font-smoothing: antialiased;
+  transition: background-color var(--blp-dur) var(--blp-ease),
+              color var(--blp-dur) var(--blp-ease);
+}
+
+h1, h2, h3, h4, p, dl, dd, figure, ul, ol { margin: 0; }
+ul, ol { padding: 0; list-style: none; }
+img, video { display: block; max-width: 100%; }
+
+/* 강조색. 작은 본문에서는 종이 배경 위에서 가독성이 떨어지므로
+   본문에는 쓰지 않고 상태·헤드라인에만 쓴다. */
+a { color: inherit; }
+
+:focus-visible {
+  outline: 3px solid var(--blp-accent);
+  outline-offset: 3px;
+}
+
+::selection { background: var(--blp-accent); color: var(--blp-paper); }
+
+
+/* =============================================================================
+   3. 배경 레이어
+   -----------------------------------------------------------------------------
+   배경은 세 가지다. 단색 #000309 / 이미지 / 영상.
+   이 레이어는 항상 z-index 맨 아래에 고정되고, 창이 그 위에 얹힌다.
+   ========================================================================== */
+
+/* 배경 미디어는 첫 화면(무대)까지만 걸린다.
+   아래 본문은 단색 --blp-ink 로 돌아온다. 이렇게 해야 라이트모드에서
+   어두운 영상 위에 어두운 창이 올라가는 사고가 생기지 않는다. */
+.blp-backdrop {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 100dvh;
+  z-index: 0;
+  overflow: hidden;
+}
+
+/* 배경 단색 - 기본. 명시적으로 지정하지 않으면 body의 --blp-ink 가 쓰인다. */
+.blp-backdrop--ink { background: var(--blp-ink); }
+
+/* 무대 높이가 100dvh 를 넘어 콘텐츠가 아래로 이어질 때 배경을 함께 늘린다.
+   media 는 비례 확대되므로 뒤가 늘어난 만큼 커진다. */
+.blp-backdrop--fill { height: 100%; }
+
+.blp-backdrop > img,
+.blp-backdrop > video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* 라이트모드에서 영상 위의 창이 묻히지 않도록 살짝 밝게 올린다 */
+[data-theme="light"] .blp-backdrop > img,
+[data-theme="light"] .blp-backdrop > video {
+  filter: brightness(1.08);
+}
+
+
+/* =============================================================================
+   4. 창 (Window)
+   -----------------------------------------------------------------------------
+   규격:
+     · 기본 600 × 800. 용도에 따라 가로·세로 변경 가능(사이즈는 자유, 규칙은 고정).
+     · fill 없음. background는 어떤 경우에도 투명.
+     · 태두리 #fefeff, 20px.
+     · 모서리 완전 각짐. border-radius: 0.
+     · 내부 요소와 태두리 사이는 8px gap (= window__body 의 padding).
+   ========================================================================== */
+
+.window {
+  position: relative;
+
+  width:  var(--blp-window-w);
+  height: var(--blp-window-h);
+
+  border: var(--blp-window-border) solid var(--blp-paper);
+  border-radius: var(--blp-window-radius);
+
+  background: none;          /* fill 없음 - 강제 */
+  box-shadow: none;
+
+  color: var(--blp-paper);
+}
+
+/* 안쪽 면. 8px gap 은 여기가 담당한다.
+   자식은 셋까지 허용한다: 좌측 블록, 자유 요소, 우측 블록. 그 외는 규칙 위반. */
+.window__body {
+  height: 100%;
+  padding: var(--blp-window-gap);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: var(--blp-window-gap);
+  overflow: hidden;          /* 블록을 침범하지 못하게 */
+}
+
+/* ---- 좌측 블록 / 우측 블록 ----------------------------------------------
+   규칙: 표기가 가능한 요소는 둘 중 하나에 속한다.
+   좌측 블록 = 상단 좌측 정렬 / 우측 블록 = 하단 우측 정렬.
+   내용물이 블록 높이를 넘으면 그 블록이 직접 스크롤한다. */
+.window__block {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  gap: var(--blp-window-gap);
+  flex: none;
+}
+
+.window__block--left  { align-items: flex-start; text-align: left; }
+.window__block--right { align-items: flex-end;   text-align: right; }
+
+/* 블록이 넘칠 때의 스크롤. 창 밖으로는 절대 새지 않는다. */
+.window__block--scroll {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+
+/* 블록 안의 요소는 블록 폭을 넘지 않는다 */
+.window__block > * { max-width: 100%; }
+
+/* 중앙 슬롯은 좌/우 블록 사이에 올 수 없지만, 좌측 블록 안의 간격으로 쓴다 */
+.window__slot {
+  display: flex;
+  flex-direction: column;
+  gap: var(--blp-window-gap);
+  min-height: 0;
+}
+
+/* ---- 자유 요소 ------------------------------------------------------------
+   좌측 글자도 우측 글자도 아닌, 창 안의 세 번째 구역.
+   표기가 불가능한 것들이 여기에 온다: 블로그, 시뮬레이션 화면, PDF, 채팅 화면.
+   이럴 때 창은 자연스럽게 커진다.
+
+   규칙:
+     · 좌우 중앙정렬만 한다. 좌측도 우측도 아니다.
+     · 중앙 열 폭을 넘어야 하면 플로팅이라고 말하고, 창 태두리에 가까이 붙는다.
+     · 높이가 구역을 넘으면 잘리고, 그 안에서만 스크롤된다. 창 밖으로는 나가지 않는다. */
+.window__free {
+  flex: 1;                    /* 좌측과 우측 사이의 남는 높이를 전부 차지한다 */
+  min-height: 0;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;        /* 좌우 중앙정렬만 */
+  justify-content: flex-start;
+  gap: var(--blp-window-gap);
+
+  padding-block: 0;            /* sticky 도킹 기준을 밀지 않도록 0.
+                                  위쪽 여백은 body 의 8px gap 과 gap 이 담당한다. */
+
+  overflow-y: auto;
+  overflow-x: clip;           /* 플로팅이 옆으로 삐져나가도 스크롤바는 생기지 않는다 */
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+
+/* 중앙 열. 자유 요소는 기본적으로 이 폭을 지킨다.
+   width:100% 인 자식도 여기서 막는다 - 중앙 정렬이어도 전체 폭을 먹으면
+   중앙 열이라는 말이 무의미해진다. dock 만 예외다. */
+.window__free > :not(.window__free__dock) {
+  max-width: var(--blp-free-col, 520px);
+}
+
+/* 페이지 창에서는 중앙 열 제한을 푼다. 좌우 글자만 비켜가면 된다. */
+.blp-window--page .window__free > :not(.window__free__dock) {
+  max-width: 100%;
+}
+/* 중앙 열. 자유 요소는 기본적으로 이 폭을 지킨다 */
+.window__free__col {
+  width: 100%;
+  max-width: var(--blp-free-col, 520px);
+}
+
+/* 플로팅 - 중앙 열에서 벗어나 창 태두리에 가까이 붙는다.
+   중앙 정렬은 유지한 채 좌우로 reach 만큼만 넓어지며, 창 밖으로는 나가지 않는다.
+   구역이 overflow-x: clip 이므로 경계를 넘어가도 창 밖으로 새지 않는다. */
+.window__free__float {
+  width: min(100%, calc(var(--blp-free-col, 520px) + 2 * var(--blp-free-reach, 96px)));
+  max-width: none;
+  align-self: center;
+}
+
+/* 도킹 - 창 하단 태두리에 붙는다.
+   내용 위로 겹치며, 내용은 그 뒤로 지나가고 스크롤된다.
+   채팅 입력창, 실행 표시줄 같은 것의 자리.
+
+   배경이 없다. 배경을 깔면 그 자리에 있는 내용만큼을 가려버려서
+   "잘린 것" 으로 보인다. 배경 없이 겹쳐야 내용이 뒤로 지나가는 게 보인다. */
+.window__free__dock {
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
+
+  align-self: stretch;
+  display: flex;
+  justify-content: center;
+  background: none;
+
+  /* 내용이 구역보다 짧을 때는 여분을 먹어 창 하단으로 밀어낸다.
+     sticky 는 넘칠 때만 동작하므로 이것이 없으면 도킹이 중간에 서게 된다. */
+  margin-top: auto;
+}
+
+/* specificity: .blp-input 의 width:100% 을 이겨야 한다 */
+.window__free .window__free__dock > * {
+  width: min(100%, calc(var(--blp-free-col, 520px) + 2 * var(--blp-free-reach, 96px)));
+  max-width: none;
+  flex: none;
+}
+
+# =============================================================================
+   자유 요소 데모용 요소
+   -----------------------------------------------------------------------------
+   자유 요소가 보여 주는 것은 남의 콘텐츠다. 그래서 여기 있는 것들은
+   BLP 컴포넌트가 아니라 "그 안에 담기는 보통 웹 UI" 다.
+   다만 톤은 유지한다: 각진 모서리, 2색 + 강조색, 그 이상 없음.
+   ========================================================================== */
+
+/* ---- 채팅 ------------------------------------------------------------- */
+.blp-chat {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  padding-bottom: 72px;      /* 도킹 입력창이 덮지 않도록 여유 */
+}
+
+.blp-bubble {
+  max-width: 76%;
+  padding: 12px 18px;
+  font-size: 18px;
+  line-height: 1.45;
+  background: var(--blp-paper);
+  color: var(--blp-ink);
+  align-self: flex-start;
+}
+
+.blp-bubble--me {
+  background: var(--blp-ink);
+  border: var(--blp-border-w) solid var(--blp-paper);
+  color: var(--blp-paper);
+  align-self: flex-end;
+}
+
+.blp-bubble__time {
+  display: block;
+  margin-top: 6px;
+  font-family: var(--blp-mono);
+  font-size: 12px;
+  opacity: 0.55;
+}
+
+/* ---- 문서 (블로그 / PDF) ------------------------------------------------ */
+.blp-doc {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  font-size: 19px;
+  line-height: 1.65;
+  opacity: 0.9;
+}
+
+.blp-doc__h { font-size: 26px; font-weight: 700; letter-spacing: -0.02em; opacity: 1; }
+
+.blp-doc__meta {
+  font-family: var(--blp-mono);
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.55;
+}
+
+/* PDF 페이지 — 흰 종이 한 장. 여백을 남기는 것이 PDF 다 */
+.blp-page {
+  width: 260px;
+  align-self: center;
+  background: var(--blp-paper);
+  color: var(--blp-ink);
+  padding: 28px 26px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.blp-page__rule { height: 2px; background: color-mix(in srgb, var(--blp-ink) 25%, transparent); }
+
+/* ---- 대시보드 ---------------------------------------------------------- */
+.blp-tiles {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  width: 100%;
+}
+
+.blp-tile {
+  border: var(--blp-border-w) solid var(--blp-paper);
+  border-radius: 36px;
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.blp-tile__k { font-family: var(--blp-mono); font-size: 12px; letter-spacing: 0.08em; opacity: 0.6; }
+.blp-tile__v { font-size: 28px; font-weight: 700; letter-spacing: -0.02em; }
+.blp-tile__d { font-family: var(--blp-mono); font-size: 13px; opacity: 0.6; }
+
+/* 막대 차트 — CSS 로만. 축은 눈으로 읽는 정보다 */
+.blp-bars { display: flex; flex-direction: column; gap: 8px; width: 100%; }
+
+.blp-bars__row {
+  display: grid;
+  grid-template-columns: 72px 1fr 44px;
+  align-items: center;
+  gap: 12px;
+  font-family: var(--blp-mono);
+  font-size: 13px;
+}
+
+.blp-bars__track { height: 14px; background: color-mix(in srgb, currentColor 14%, transparent); }
+.blp-bars__fill  { height: 100%; background: currentColor; }
+
+/* ---- 표 (자유 요소 안) ------------------------------------------------- */
+.blp-sheet {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 17px;
+}
+
+.blp-sheet th, .blp-sheet td {
+  padding: 14px 14px;
+  text-align: left;
+  border-bottom: var(--blp-rule) solid color-mix(in srgb, currentColor 22%, transparent);
+}
+
+.blp-sheet thead th {
+  font-family: var(--blp-mono);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.55;
+  border-bottom-color: currentColor;
+}
+
+.blp-sheet td:last-child, .blp-sheet th:last-child { text-align: right; }
+
+/* ---- 폼 ---------------------------------------------------------------- */
+.blp-fields { display: flex; flex-direction: column; gap: 10px; width: 100%; }
+
+.blp-field {
+  display: block;
+  width: 100%;
+  height: 52px;
+  padding: 0 18px;
+  background: none;
+  color: var(--blp-paper);
+  background: var(--blp-ink);
+  border: var(--blp-border-w) solid color-mix(in srgb, var(--blp-paper) 55%, transparent);
+  border-radius: 36px;
+  font: inherit;
+  font-size: 17px;
+}
+
+.blp-field::placeholder { color: currentColor; opacity: 0.45; }
+.blp-field:focus { border-color: var(--blp-accent); }
+
+/* ---- 툴바 (플로팅 사례) ------------------------------------------------ */
+.blp-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 14px;
+  border: var(--blp-border-w) solid var(--blp-paper);
+  border-radius: 36px;
+  font-size: 16px;
+}
+
+.blp-toolbar__btn {
+  height: 36px;
+  padding: 0 16px;
+  background: none;
+  border: 0;
+  color: var(--blp-paper);
+  font: inherit;
+  font-size: 15px;
+  cursor: pointer;
+}
+
+.blp-toolbar__btn[aria-pressed="true"] { background: var(--blp-accent); color: #fefeff; }
+
+/* ---- 미디어 포스터 ----------------------------------------------------- */
+.blp-poster {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background: color-mix(in srgb, var(--blp-paper) 12%, transparent);
+  display: grid;
+  place-items: center;
+}
+
+.blp-poster__play {
+  width: 64px;
+  height: 64px;
+  display: grid;
+  place-items: center;
+  border: var(--blp-border-w) solid var(--blp-paper);
+  border-radius: 36px;
+  color: var(--blp-paper);
+}
+
+.blp-poster__time {
+  position: absolute;
+  left: 12px;
+  bottom: 12px;
+  font-family: var(--blp-mono);
+  font-size: 13px;
+}
+
+/* ---- 결과 패널 (이미지 변환기 사례) ------------------------------------ */
+.blp-out {
+  width: 100%;
+  background: color-mix(in srgb, var(--blp-paper) 46%, transparent);
+  color: var(--blp-paper);
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 18px;
+  line-height: 1.4;
+}
+
+/* 자유 요소에 도킹이 있을 때만 우측 글자를 창 하단에 고정한다.
+   그래야 자유 요소가 창 하단까지 내려와 도킹이 태두리에 붙는다.
+   도킹이 없으면 우측 글자는 흐름에 남는다 — 그래야 자유 요소가 스크롤해도
+   그 내용이 우측 글자 밑을 지나가지 않는다.
+
+   absolute 의 기준은 padding box 이므로, gap 을 지키려면 8px 을 직접 준다.
+   0 으로 두면 창 태두리에 딱 붙어 gap 규칙을 위반한다. */
+.window__body:has(> .window__free > .window__free__dock) { position: relative; }
+
+.window__body:has(> .window__free > .window__free__dock) > .window__block--right {
+  position: absolute;
+  right: var(--blp-window-gap);
+  bottom: var(--blp-window-gap);
+  z-index: 2;                 /* 도킹 배경(z-index 1) 위에 있어야 가려지지 않는다 */
+}
+
+/* 넘치지 않으면 스크롤바가 아예 없다 */
+.window__free:not(:hover) { scrollbar-color: transparent transparent; }
+.window__free:hover { scrollbar-color: color-mix(in srgb, currentColor 40%, transparent) transparent; }
+
+/* ---- 최소 인덱스 ---------------------------------------------------------
+   좌측 글자 자리에 목록만 놓는다. 설명을 덧붙이지 않는다.
+   호버할 때 색만 바뀐다.
+   행 전체가 클릭 영역이다 - 글자만 누를 수 있으면 빗나간다. */
+.window__index {
+  display: flex;
+  flex-direction: column;
+  align-self: stretch;      /* 좌측 블록이 flex-start 여도 창을 끝까지 가로지른다 */
+  width: 100%;
+  gap: 4px;
+}
+
+.window__index__item {
+  display: flex;
+  align-items: baseline;
+  align-self: stretch;       /* 부모의 flex-start 를 무시하고 행 전체를 편다 */
+  width: 100%;
+  min-height: var(--blp-display-size);
+  padding: 0 8px 0 0;
+
+  /* 좌측 글자이므로 디스플레이 크기를 따른다.
+     <a> 라 본문 규칙(:is(p, li, ...))에 걸리지 않기 때문에 명시한다. */
+  font-size: var(--blp-display-size);
+  font-weight: var(--blp-display-weight);
+  line-height: 1;
+  letter-spacing: -0.035em;
+
+  color: var(--blp-paper);
+  text-decoration: none;
+  cursor: pointer;
+
+  transition: color var(--blp-dur) var(--blp-ease);
+}
+
+.window__index__item:hover,
+.window__index__item:focus-visible { color: var(--blp-accent); }
+
+/* -- 크기 프리셋 --------------------------------------------------------
+   §4 "가로 세로는 필요에 따라 변경 가능"을 표현하는 프리셋.
+   규격선(태두리 20 / 모서리 0 / gap 8)은 모든 프리셋에서 동일하다. */
+.window--landscape { --blp-window-w: 800px; --blp-window-h: 600px; }
+.window--wide      { --blp-window-w: 1000px; --blp-window-h: 360px; }
+.window--square    { --blp-window-w: 420px;  --blp-window-h: 420px; }
+.window--tall      { --blp-window-w: 360px;  --blp-window-h: 720px; }
+.window--short     { --blp-window-w: 420px;  --blp-window-h: 240px; }
+
+
+/* ---- 데모 패널 ----------------------------------------------------------
+   창처럼 보이지만 창이 아니다.
+   한 화면에 창은 하나라는 원칙을 지키기 위해, 자유 요소 안에서 창을
+   겹쳐 보이는 곳은 이쪽으로 대신 그린다. 규격은 창과 동일하다. */
+.blp-demo-window {
+  position: relative;      /* 안의 배경 레이어 기준이 된다 */
+  isolation: isolate;      /* 자식 z-index 가 밖으로 새지 않게 */
+  overflow: hidden;
+  width:  var(--blp-window-w);
+  height: var(--blp-window-h);
+  border: var(--blp-window-border) solid var(--blp-paper);
+  border-radius: var(--blp-window-radius);
+  background: none;
+  box-shadow: none;
+  color: var(--blp-paper);
+}
+
+.blp-demo-window--media[data-effect="none"] .window__body { backdrop-filter: none; }
+
+/* 데모 패널도 같은 효과를 쓴다 */
+.blp-demo-window--fx-invert .window__body { backdrop-filter: invert(1); }
+.blp-demo-window--fx-sepia  .window__body { backdrop-filter: sepia(.85) saturate(1.2) brightness(.8); }
+.blp-demo-window--fx-shift  .window__body { backdrop-filter: hue-rotate(150deg) saturate(1.7) brightness(.7); }
+.blp-demo-window--fx-hard   .window__body { backdrop-filter: contrast(1.9) brightness(.72); }
+.blp-demo-window--fx-chain  .window__body { backdrop-filter: blur(3px) saturate(.25) contrast(1.35) brightness(.7); }
+.blp-demo-window--blend .window__text,
+.blp-demo-window--blend .window__back { mix-blend-mode: difference; }
+.blp-demo-window--blend-multiply .window__text,
+.blp-demo-window--blend-multiply .window__back { mix-blend-mode: multiply; }
+.blp-demo-window--blend-screen .window__text,
+.blp-demo-window--blend-screen .window__back { mix-blend-mode: screen; }
+.blp-demo-window--blend-luminosity .window__text,
+.blp-demo-window--blend-luminosity .window__back { mix-blend-mode: luminosity; }
+.blp-demo-window--blend-softlight .window__text,
+.blp-demo-window--blend-softlight .window__back { mix-blend-mode: soft-light; }
+.blp-demo-window--fx-noise .window__body,
+.blp-demo-window--fx-vignette .window__body,
+.blp-demo-window--fx-scan .window__body,
+.blp-demo-window--fx-grid .window__body { position: relative; }
+.blp-demo-window--fx-noise .window__body::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
+  opacity: 0.14; mix-blend-mode: overlay;
+}
+.blp-demo-window--fx-vignette .window__body::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background-image: radial-gradient(ellipse at center, rgba(0,0,0,0) 38%, rgba(0,3,9,.82) 100%);
+}
+.blp-demo-window--fx-scan .window__body::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background-image: repeating-linear-gradient(to bottom, rgba(254,254,255,.07) 0 1px, transparent 1px 4px);
+}
+.blp-demo-window--fx-grid .window__body::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background-image: linear-gradient(to right, rgba(254,254,255,.09) 1px, transparent 1px),
+                    linear-gradient(to bottom, rgba(254,254,255,.09) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+.blp-demo-window--media[data-effect="dim"] .window__body {
+  backdrop-filter: saturate(0.28) brightness(0.46);
+}
+.blp-demo-window--media[data-effect="frost"] .window__body {
+  backdrop-filter: blur(14px) saturate(0.5) brightness(0.62) contrast(1.15);
+}
+.blp-demo-window--media[data-effect="mono"] .window__body {
+  backdrop-filter: grayscale(1) brightness(0.72) contrast(1.55);
+}
+.blp-demo-window--media { border-color: var(--blp-paper); }
+.blp-demo-window--media[data-effect="none"] .window__text {
+  text-shadow: 0 1px 24px rgba(0, 0, 0, 0.55);
+}
+
+/* =============================================================================
+   5. 창 안 디스플레이 텍스트
+   -----------------------------------------------------------------------------
+   창 안에 글자가 들어갈 때의 기본. 크기 70px, 굵기 700.
+   좌측 글자 = 상단 좌측 정렬 / 우측 글자 = 하단 우측 정렬.
+   ========================================================================== */
+
+/* 아래 규칙보다 우선순위가 높아야 한다. (.window__body :is(p, ...) = 0,1,1
+   이므로 두 클래스로 지정해 0,2,0 으로 만든다. 안 그러면 70px 글자가 24px로 깎인다) */
+.window__body .window__text {
+  margin: 0;
+  font-size: var(--blp-display-size);
+  font-weight: var(--blp-display-weight);
+  line-height: 1.02;
+  letter-spacing: -0.035em;
+  text-wrap: balance;
+  color: var(--blp-paper);
+}
+
+.window__text--left {
+  align-self: flex-start;
+  text-align: left;
+}
+
+.window__text--right {
+  align-self: flex-end;
+  text-align: right;
+}
+
+/* 창 안에서 쓰는 웹 텍스트(24px/600) - 디스플레이 크기를 상속하지 않도록 분리 */
+.window__body :is(p, li, dd, dt, td, th, label) {
+  font-size: var(--blp-text-size);
+  font-weight: var(--blp-text-weight);
+  line-height: 1.45;
+}
+
+.window__body :is(h1, h2, h3, h4) {
+  font-size: var(--blp-text-size);
+  font-weight: var(--blp-display-weight);
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+}
+
+.window__body :is(ul, ol) { display: flex; flex-direction: column; gap: 8px; }
+
+
+/* =============================================================================
+   6. 색깔 요소 (Fill)
+   -----------------------------------------------------------------------------
+   쓰이는 곳: 버튼 · 네비게이션 바 · 카드.
+   배경 #fefeff / 태두리 없음 / 글자 #000309.
+   모서리도 36px 규칙을 따른다. 태두리 요소와 다르지 않다.
+   둥글 수 없는 유일한 것은 창뿐이다.
+   ========================================================================== */
+
+.blp-fill {
+  background: var(--blp-paper);
+  color: var(--blp-ink);
+  border: 0;                  /* 태두리 없음 - 강제 */
+  border-radius: var(--blp-radius-cap);   /* 36px 규칙을 그대로 따른다 */
+  font-family: inherit;
+  font-size: var(--blp-text-size);
+  font-weight: var(--blp-text-weight);
+  line-height: 1.3;
+}
+
+/* -- 버튼 -------------------------------------------------------------- */
+.blp-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-height: 64px;
+  padding: 0 32px;
+  cursor: pointer;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background-color var(--blp-dur) var(--blp-ease),
+              color var(--blp-dur) var(--blp-ease);
+}
+
+.blp-button:hover { background: var(--blp-accent); color: #fefeff; }
+.blp-button:active { background: var(--blp-ink); color: var(--blp-paper); }
+
+.blp-button[aria-pressed="true"] {
+  background: var(--blp-accent);
+  color: #fefeff;
+}
+
+.blp-button:disabled {
+  background: var(--blp-paper);
+  color: var(--blp-ink);
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+/* -- 네비게이션 바 -----------------------------------------------------
+   스펙상 색깔 요소로 고정 분류이므로 .blp-fill 을 따로 붙이지 않아도
+   스스로 완결돼야 한다. .blp-fill 을 함께 붙여도 값이 같으므로 무해하다. */
+.blp-nav {
+  display: flex;
+  align-items: stretch;
+  min-height: 72px;
+
+  background: var(--blp-paper);
+  color: var(--blp-ink);
+  border: 0;
+  border-radius: var(--blp-radius-cap);
+  font-family: inherit;
+  font-size: var(--blp-text-size);
+  font-weight: var(--blp-text-weight);
+}
+
+.blp-nav--vertical { flex-direction: column; }
+
+/* 항목을 나눠치는 선은 box-shadow 로 그린다. */
+.blp-nav__item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 24px;
+  min-height: 56px;
+  color: var(--blp-ink);
+  text-decoration: none;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color var(--blp-dur) var(--blp-ease),
+              color var(--blp-dur) var(--blp-ease);
+}
+
+.blp-nav--vertical .blp-nav__item { box-shadow: inset 0 -2px 0 var(--blp-ink); }
+.blp-nav--vertical { gap: 0; }
+.blp-nav__item:hover { background: var(--blp-accent); color: #fefeff; }
+
+/* 현재 페이지 — 줄이 아니라 색으로 말한다. 강조색은 상태 전용이다. */
+.blp-nav__item[aria-current="page"] { color: var(--blp-accent); }
+.blp-nav__item[aria-current="page"]:hover { color: #fefeff; }
+
+/* -- 카드 -------------------------------------------------------------- */
+.blp-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 24px;
+  text-align: left;
+}
+
+.blp-card__title {
+  font-size: var(--blp-text-size);
+  font-weight: var(--blp-display-weight);
+  letter-spacing: -0.02em;
+}
+
+.blp-card__body { opacity: 0.72; font-size: 20px; line-height: 1.4; }
+
+.blp-card__meta {
+  margin-top: auto;
+  padding-top: 12px;
+  font-family: var(--blp-mono);
+  font-size: 15px;
+  letter-spacing: 0.02em;
+  opacity: 0.55;
+}
+
+/* -- 태그 / 칩 ---------------------------------------------------------
+   색깔 요소이므로 각짐. 둥글게 쓰고 싶으면 태두리 요소 쪽을 본다. */
+.blp-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 32px;
+  padding: 0 16px;
+  font-family: var(--blp-mono);
+  font-size: 15px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+
+/* =============================================================================
+   7. 태두리 요소 (Border)
+   -----------------------------------------------------------------------------
+   쓰이는 곳: 입력란 · 표 · 설명 박스.
+   배경 없음 / 태두리 2px / 글자 24px 600.
+   모서리는 §8 규칙을 그대로 따른다.
+   ========================================================================== */
+
+.blp-border {
+  /* 배경을 둔다. 투명이면 미디어 위에 놓였을 때 안쪽 글자가 배경에 묻힌다.
+     창만 fill 이 없다. */
+  background: var(--blp-ink);
+  color: var(--blp-paper);
+  border: var(--blp-border-w) solid var(--blp-paper);
+  border-radius: var(--blp-radius-cap);   /* 모서리 법칙 전체가 이 한 줄이다 */
+  font-family: inherit;
+  font-size: var(--blp-text-size);
+  font-weight: var(--blp-text-weight);
+  line-height: 1.45;
+  transition: border-color var(--blp-dur) var(--blp-ease),
+              color var(--blp-dur) var(--blp-ease);
+}
+
+.blp-border:hover { border-color: color-mix(in srgb, currentColor 55%, transparent); }
+
+.blp-border:focus-within { border-color: var(--blp-accent); }
+
+/* -- 입력란 ------------------------------------------------------------ */
+.blp-input {
+  display: block;
+  width: 100%;
+  height: 64px;
+  padding: 0 24px;
+  outline-offset: 2px;
+}
+
+.blp-input::placeholder { color: currentColor; opacity: 0.4; }
+
+.blp-input:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* 높이가 36px 이하인 입력란 - 완전 둥근 알약형이 된다 */
+.blp-input--pill { height: 36px; padding: 0 20px; font-size: 18px; }
+
+/* -- 설명 박스 -------------------------------------------------------- */
+.blp-note {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 24px 28px;
+}
+
+.blp-note__title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: var(--blp-text-size);
+  font-weight: var(--blp-display-weight);
+}
+
+.blp-note__text { opacity: 0.78; font-size: 20px; line-height: 1.5; }
+
+/* -- 표 ----------------------------------------------------------------
+   <table> 자체는 border-radius 가 먹지 않는다. 테두리·모서리·overflow 를
+   래퍼가 갖고, 표는 그 안에 평평하게 놓인다. 이 래퍼가 곧 태두리 요소다. */
+.blp-table-wrap {
+  width: 100%;
+  overflow: hidden;
+  background: var(--blp-ink);
+  color: var(--blp-paper);
+  border: var(--blp-border-w) solid var(--blp-paper);
+  border-radius: var(--blp-radius-cap);
+}
+
+.blp-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 20px;
+}
+
+.blp-table caption {
+  padding: 20px 24px 0;
+  text-align: left;
+  font-size: 15px;
+  font-family: var(--blp-mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  opacity: 0.5;
+}
+
+.blp-table th,
+.blp-table td {
+  padding: 20px 24px;
+  text-align: left;
+  vertical-align: top;
+  border-top: var(--blp-rule) solid color-mix(in srgb, currentColor 22%, transparent);
+}
+
+.blp-table thead th {
+  border-top: 0;
+  font-family: var(--blp-mono);
+  font-size: 15px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  opacity: 0.55;
+}
+
+.blp-table tbody tr:hover { background: color-mix(in srgb, currentColor 8%, transparent); }
+
+.blp-table code { font-family: var(--blp-mono); font-size: 17px; }
+
+
+/* =============================================================================
+   8. 모서리 법칙
+   -----------------------------------------------------------------------------
+   높이가 72px 이하  = 완전 둥글게
+   높이가 72px 초과  = 36px
+
+   border-radius: 36px 한 줄로 두 경우를 동시에 만족한다.
+   규칙과 식이 1:1 대응하므로, 예외를 따로 만들 필요가 없다.
+   ========================================================================== */
+
+.blp-radius-demo {
+  display: flex;
+  align-items: flex-end;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.blp-radius-demo__item {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.blp-radius-demo__box {
+  width: 200px;
+  background: var(--blp-paper);
+  color: var(--blp-ink);
+  border-radius: var(--blp-radius-cap);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--blp-mono);
+  font-size: 15px;
+}
+
+.blp-radius-demo__label {
+  font-family: var(--blp-mono);
+  font-size: 15px;
+  opacity: 0.6;
+  line-height: 1.5;
+}
+
+
+/* =============================================================================
+   9. 창 안/밖 분리 효과
+   -----------------------------------------------------------------------------
+   배경을 단색 #000309 이 아닌 이미지·영상으로 깔았을 때만 쓴다.
+   창은 fill 이 없어서 안과 밖이 같은 밝기로 뭉개진다. 그래서 "효과"로 분리한다.
+
+   backdrop-filter 는 색을 덧씌우는 게 아니라 뒤의 픽셀을 변형한다.
+   즉 fill 을 추가하지 않고도 안/밖이 달라 보인다 - 규칙을 지키는 유일한 방법.
+
+   data-effect 값 네 가지:
+     none  대조군. 효과가 없어서 안/밖이 붙어버리는 모습
+     dim   채도와 밝기를 낮춰 뒤를 가라앉힌다
+     frost 블러로 뒤의 디테일을 지우고 대비를 올린다
+     mono  완전 회색 + 높은 대비. 영상이어도 단색 면처럼 읽힌다
+   ========================================================================== */
+
+.window--media .window__body { border-radius: 0; }
+
+.window--media[data-effect="none"] .window__body { backdrop-filter: none; }
+
+.window--media[data-effect="dim"] .window__body {
+  backdrop-filter: saturate(0.28) brightness(0.46);
+}
+
+.window--media[data-effect="frost"] .window__body {
+  backdrop-filter: blur(14px) saturate(0.5) brightness(0.62) contrast(1.15);
+}
+
+.window--media[data-effect="mono"] .window__body {
+  backdrop-filter: grayscale(1) brightness(0.72) contrast(1.55);
+}
+
+/* 태두리는 언제나 선명해야 한다. 효과가 번지면 창이 사라져 보인다. */
+.window--media { border-color: var(--blp-paper); }
+
+/* 효과가 없는 대조군에서는 안쪽 텍스트가 뒤와 겹쳐 읽히기가 어렵다.
+   규칙 위반을 고치는 게 아니라, 그 문제가 보이도록 일부러 둔다. */
+.window--media[data-effect="none"] .window__text {
+  text-shadow: 0 1px 24px rgba(0, 0, 0, 0.55);
+}
+
+/* ---- 모드에 따라 방향만 뒤집힌다 ---------------------------------------
+   안과 밖을 떼어내는 "의도"는 모드와 무관하다. 바뀌는 것은 방향뿐이다.
+   다크는 안쪽을 가라앉히고, 라이트는 안쪽을 띄운다.                       */
+[data-theme="light"] .window--media[data-effect="dim"] .window__body {
+  backdrop-filter: saturate(0.3) brightness(1.5);
+}
+
+[data-theme="light"] .window--media[data-effect="frost"] .window__body {
+  backdrop-filter: blur(12px) saturate(0.4) brightness(1.18) contrast(0.9);
+}
+
+/* 라이트 전용. 안쪽을 종이 면처럼 띄워 올린다. */
+[data-theme="light"] .window--media[data-effect="wash"] .window__body {
+  backdrop-filter: saturate(0.25) brightness(1.1) contrast(0.86);
+}
+
+/* 라이트모드에서는 대조군의 그림자 방향도 뒤집혀야 한다. */
+[data-theme="light"] .window--media[data-effect="none"] .window__text {
+  text-shadow: 0 1px 24px rgba(254, 254, 255, 0.7);
+}
+
+
+/* =============================================================================
+   10. 레이아웃 유틸
+   ========================================================================== */
+
+/* 중앙 정렬 무대 - "화면 중앙에는 창이 하나" */
+.blp-stage {
+  position: relative;
+  z-index: 1;
+  min-height: 100dvh;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);   /* 열이 내용폭으로 늘어나지 않게 */
+  place-items: center;
+  padding: 96px 24px;
+}
+
+.blp-section {
+  position: relative;
+  z-index: 1;
+  background: var(--blp-ink);      /* 미디어 아래에서는 단색으로 되돌아온다 */
+  padding: 88px 24px;
+  max-width: 1160px;
+  margin: 0 auto;
+}
+
+
+
+.blp-section__head {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 720px;
+  margin-bottom: 44px;
+}
+
+.blp-section__eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--blp-mono);
+  font-size: 15px;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  opacity: 0.55;
+}
+
+.blp-section__title {
+  font-size: 40px;
+  font-weight: var(--blp-display-weight);
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+}
+
+.blp-section__lede {
+  font-size: 20px;
+  line-height: 1.55;
+  opacity: 0.7;
+}
+
+.blp-grid { display: grid; gap: 24px; }
+.blp-grid--2 { grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); }
+.blp-grid--3 { grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+
+/* 반드시 N x N 로 보여야 하는 비교용 그리드. auto-fit 은 폭에 따라
+   3+1 처럼 깨지므로 여기서는 개수를 고정한다. */
+.blp-grid--strict-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.blp-grid--strict-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+
+.blp-stack { display: flex; flex-direction: column; gap: 16px; }
+.blp-row   { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+
+.blp-lede {
+  font-size: var(--blp-text-size);
+  line-height: 1.4;
+  letter-spacing: -0.01em;
+}
+
+.blp-muted { opacity: 0.6; }
+
+.blp-mono {
+  font-family: var(--blp-mono);
+  font-size: 16px;
+  letter-spacing: 0.01em;
+}
+
+
+/* =============================================================================
+   12. 스펙 표 · 코드
+   ========================================================================== */
+
+.blp-kv {
+  display: grid;
+  grid-template-columns: minmax(140px, max-content) 1fr;
+  gap: 0;
+  border-top: var(--blp-rule) solid color-mix(in srgb, var(--blp-paper) 22%, transparent);
+}
+
+.blp-kv__key,
+.blp-kv__val {
+  padding: 16px 0;
+  font-size: 18px;
+  line-height: 1.4;
+}
+
+.blp-kv__key { opacity: 0.55; }
+.blp-kv__val code { font-family: var(--blp-mono); font-size: 16px; }
+
+.blp-code {
+  margin: 0;
+  padding: 20px 24px;
+  overflow-x: auto;
+  background: var(--blp-ink);
+  color: var(--blp-paper);
+  border: var(--blp-border-w) solid var(--blp-paper);
+  border-radius: var(--blp-radius-cap);
+  font-family: var(--blp-mono);
+  font-size: 15px;
+  line-height: 1.7;
+  white-space: pre;
+}
+
+.blp-code .tok-key { color: var(--blp-paper); font-weight: 500; }
+
+.blp-swatch {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.blp-swatch__chip {
+  height: 96px;
+  border: var(--blp-border-w) solid var(--blp-paper);
+  border-radius: var(--blp-radius-cap);
+}
+
+.blp-swatch__meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 15px;
+}
+.blp-swatch__meta code { font-family: var(--blp-mono); font-size: 15px; opacity: 0.7; }
+.blp-swatch__name { font-weight: var(--blp-display-weight); }
+
+
+/* =============================================================================
+   13. 반응형 · 모션 · 인쇄
+   -----------------------------------------------------------------------------
+   토큰은 고정이다. 좁은 화면에서 줄어드는 것은 창과 디스플레이 크기뿐이고,
+   태두리 20 / 모서리 0 / gap 8 / 본문 24는 그대로다.
+   ========================================================================== */
+
+@media (max-width: 1400px) {
+  /* 창은 크기가 자유지만 화면 밖으로 나가면 안 된다.
+     아주 큰 창(1300px 등)이 좁은 화면에서 잘리는 것을 막는다. */
+  .window, .blp-demo-window { max-width: 100%; }
+
+  /* flex 안에서 max-width:100% 는 flex 컨테이너 폭을 기준으로 풀린다.
+     그 컨테이너가 내용 폭으로 늘어나면 창도 함께 늘어나므로,
+     중간 껍질에도 제한을 건다. */
+  .blp-screen__inner { min-width: 0; max-width: 100%; }
+}
+
+@media (max-width: 720px) {
+  .window {
+    width: min(var(--blp-window-w), 100%);
+    height: auto;
+    aspect-ratio: 3 / 4;
+  }
+
+  .window--landscape,
+  .window--wide,
+  .window--short {
+    width: min(var(--blp-window-w), 100%);
+    aspect-ratio: 16 / 9;
+  }
+
+  .window--square { aspect-ratio: 1; }
+  .window--tall   { aspect-ratio: 1 / 2; }
+
+  .window__body { gap: 16px; }
+
+  .window__text,
+  .window__index__item {
+    font-size: clamp(28px, 8.5vw, 70px);
+  }
+
+  .blp-stage { padding: 56px 16px; }
+  .blp-section { padding: 56px 16px; }
+  .blp-section__title { font-size: 30px; }
+  .blp-kv { grid-template-columns: 1fr; gap: 0; }
+  .blp-kv__key { padding-bottom: 0; }
+  .blp-table th, .blp-table td { padding: 14px 16px; font-size: 17px; }
+
+  /* 넘치지 않을 것이 없는 것은 접는다 */
+  .blp-nav { flex-wrap: wrap; }
+  .blp-nav__item { white-space: normal; }
+  .blp-code { max-width: 100%; font-size: 13px; }
+  .blp-radius-demo { gap: 16px; }
+  .blp-radius-demo__box { width: 140px; }
+
+  /* 테두리 요소는 내용이 최소폭을 잡으므로, 자식이 줄어들 수 있게 해준다 */
+  .blp-border, .blp-note, .blp-card { min-width: 0; padding: 16px 18px; }
+  .blp-border > *, .blp-note > *, .blp-card > * { min-width: 0; overflow-wrap: anywhere; }
+  .blp-note__title, .blp-note__text { word-break: keep-all; overflow-wrap: break-word; }
+
+  /* 그리드 트랙의 최소폭(320px)이 컨테이너보다 넓으면 창 밖으로 넘친다.
+     좁을 때는 무조건 1단으로 내린다. */
+  .blp-grid--2, .blp-grid--3, .blp-grid--strict-2, .blp-grid--strict-4 {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* 표는 줄어들지 않는다. 자기 안에서만 굴린다 */
+  .blp-table-wrap { overflow-x: auto; overflow-y: hidden; }
+  .blp-sheet { min-width: 420px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}
+
+@media print {
+  body { background: #fff; color: #000; }
+  .blp-backdrop { display: none; }
+}
+
+
+/* 좌측 글자와 우측 글자는 크기와 굵기를 바꾸지 않는다.
+   아래 두 값이 그 규칙이고, 다른 곳에서 덮어써도 통과하지 못하게 한다. */
+.window__body :is(.window__block--left, .window__block--right) *,
+.window__body :is(.window__block--left, .window__block--right) {
+  font-size: var(--blp-display-size);
+  font-weight: var(--blp-display-weight);
+}
+
+/* ---- 메인으로 돌아가기 ---------------------------------------------------
+   우측 글자가 그 자리를 맡는다. 창 밖으로 나가지 않고, 창 안에 있고,
+   좌측 글자와 같은 크기다. */
+.window__back {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 20px;
+  color: var(--blp-paper);
+  text-decoration: none;
+  transition: color var(--blp-dur) var(--blp-ease);
+}
+
+.window__back:hover,
+.window__back:focus-visible { color: var(--blp-accent); }
+
+/* 좌측 글자 위의 번호 */
+/* 좌측 글자와 우측 글자는 크기와 굵기를 바꾸지 않는다.
+   아래 두 값이 그 규칙이고, 다른 곳에서 덮어써도 통과하지 못하게 한다. */
+.window__body :is(.window__block--left, .window__block--right) *,
+.window__body :is(.window__block--left, .window__block--right) {
+  font-size: var(--blp-display-size);
+  font-weight: var(--blp-display-weight);
+}
+
+/* ---- 메인으로 돌아가기 ---------------------------------------------------
+   우측 글자가 그 자리를 맡는다. 창 밖으로 나가지 않고, 창 안에 있고,
+   좌측 글자와 같은 크기다. */
+.window__back {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 20px;
+  color: var(--blp-paper);
+  text-decoration: none;
+  transition: color var(--blp-dur) var(--blp-ease);
+}
+
+.window__back:hover,
+.window__back:focus-visible { color: var(--blp-accent); }
+
+/* 좌측 글자 위의 번호 */
+/* ---- 페이지 창 ----------------------------------------------------------
+   한 화면에 창은 하나, 모든 요소는 그 창 안에 있다.
+   창은 화면을 꽉 채우고, 넘치는 것은 자유 요소가 스크롤로 맡는다. */
+.blp-window--page {
+  --blp-window-h: calc(100dvh - 128px);
+  min-height: 520px;
+}
+
+.blp-window--page .window__free {
+  --blp-free-col: 100%;
+
+}
+
+/* 좌측 글자는 남는 높이를 전부 쓰고, 넘치면 아래로 뚫으면서 스크롤한다.
+   우측 글자는 자리를 고정한다 — 크기가 변하지 않으므로. */
+.window__body > .window__block--left {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-width: 100%;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+
+/* 자유 요소가 이 화면의 주인공이다 */
+.blp-window--page .window__free { flex: 1 1 auto; }
+
+
+/* =============================================================================
+   10. 안/밖 분리 효과 — 방법이 하나가 아니다
+   -----------------------------------------------------------------------------
+   fill 을 넣으면 창이 판이 된다. 그러면 뒤의 픽셀을 **변형**해야 한다.
+   변형하는 방법은 세 갈래다.
+
+     A  뒤 픽셀을 변형한다   backdrop-filter
+     B  창 내용을 뒤와 섞는다 mix-blend-mode
+     C  그 위에 레이어를 올린다 noise · vignette · scan
+
+   그리고 셋을 겹칠 수 있다. 아래는 전부 이 언어 안의 방법이다.
+   ========================================================================== */
+
+/* ---- A. backdrop-filter ---------------------------------------------- */
+
+.window--fx-invert .window__body { backdrop-filter: invert(1); }
+.window--fx-sepia  .window__body { backdrop-filter: sepia(.85) saturate(1.2) brightness(.8); }
+.window--fx-shift  .window__body { backdrop-filter: hue-rotate(150deg) saturate(1.7) brightness(.7); }
+.window--fx-hard   .window__body { backdrop-filter: contrast(1.9) brightness(.72); }
+.window--fx-lift   .window__body { backdrop-filter: brightness(1.35) saturate(.35); }
+
+/* 체인 — blur 뒤에 톤 매핑을 붙인다 */
+.window--fx-chain .window__body {
+  backdrop-filter: blur(3px) saturate(.25) contrast(1.35) brightness(.7);
+}
+
+/* ---- B. mix-blend-mode ------------------------------------------------
+   뒤의 픽셀을 변형하는 대신, 창 안의 글자를 뒤와 섞는다.
+   difference 는 흰 글자가 배경의 반대색이 되어 "구멍"처럼 보인다. */
+
+.window--blend .window__body { position: relative; }
+.window--blend .window__text,
+.window--blend .window__back { mix-blend-mode: difference; }
+
+.window--blend-multiply .window__text,
+.window--blend-multiply .window__back { mix-blend-mode: multiply; }
+
+.window--blend-screen .window__text,
+.window--blend-screen .window__back { mix-blend-mode: screen; }
+
+.window--blend-luminosity .window__text,
+.window--blend-luminosity .window__back { mix-blend-mode: luminosity; }
+
+.window--blend-softlight .window__text,
+.window--blend-softlight .window__back { mix-blend-mode: soft-light; }
+
+/* blend 는 채도가 살아 있어 창이 배경에 잠긴다.
+   톤을 먼저 죽이고 섞는다. */
+.window--blend .window__body { backdrop-filter: saturate(.3) contrast(1.1); }
+
+/* ---- C. 오버레이 ------------------------------------------------------ */
+
+.window--fx-layer .window__body { position: relative; }
+
+.window--fx-layer .window__body::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+/* 노이즈 — 밴딩을 끊고 질감을 준다 */
+.window--fx-noise .window__body::after {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
+  opacity: 0.14;
+  mix-blend-mode: overlay;
+}
+
+/* 비네트 — 가장자리만 감쇠시켜 안팎 차이를 만든다 */
+.window--fx-vignette .window__body::after {
+  background-image: radial-gradient(ellipse at center,
+    rgba(0, 0, 0, 0) 38%, rgba(0, 3, 9, .82) 100%);
+}
+
+/* 스캔 — 가로선을 얹는다 */
+.window--fx-scan .window__body::after {
+  background-image: repeating-linear-gradient(
+    to bottom, rgba(254, 254, 255, .07) 0 1px, transparent 1px 4px);
+}
+
+/* 격자 — 측정감 */
+.window--fx-grid .window__body::after {
+  background-image:
+    linear-gradient(to right, rgba(254, 254, 255, .09) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(254, 254, 255, .09) 1px, transparent 1px);
+  background-size: 32px 32px;
+}
+
+/* ---- 효과 목록 표를 위한 최소 스타일 ---------------------------------- */
+
+.blp-fx-tag {
+  font-family: var(--blp-mono);
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.55;
+}
+
+.blp-fx-decl {
+  font-family: var(--blp-mono);
+  font-size: 14px;
+  line-height: 1.6;
+  opacity: 0.72;
+  overflow-wrap: anywhere;
+}
+
+
+/* =============================================================================
+   11. fill 과 효과 — 두 축
+   -----------------------------------------------------------------------------
+   창과 배경의 거리는 두 축으로 만들어진다.
+
+     축 1  fill   창이 뒤를 얼마나 가리는가      기본은 없다
+     축 2  효과   효과를 어디에 거는가
+
+   fill 을 쓰지 않아도 분리가 되고, 효과를 쓰지 않아도 분리가 된다.
+   둘을 섞어도 된다. **어느 쪽도 금지되지 않는다. 기본값이 fill 없는 것뿐이다.**
+   ========================================================================== */
+
+/* ---- 축 1. fill -------------------------------------------------------- */
+
+.window--fill-wash  > .window__body,
+.blp-demo-window--fill-wash > .window__body {
+  background: color-mix(in srgb, var(--blp-ink) 62%, transparent);
+}
+
+.window--fill-mist  > .window__body,
+.blp-demo-window--fill-mist > .window__body {
+  background: color-mix(in srgb, var(--blp-paper) 16%, transparent);
+}
+
+.window--fill-solid > .window__body,
+.blp-demo-window--fill-solid > .window__body {
+  background: var(--blp-ink);
+}
+
+/* 스림 — 가장자리만 가린다. 가운데는 비쳐 있다 */
+.window--fill-scrim > .window__body,
+.blp-demo-window--fill-scrim > .window__body {
+  background: linear-gradient(to bottom,
+    transparent 34%, color-mix(in srgb, var(--blp-ink) 82%, transparent) 100%);
+}
+
+/* ---- 축 2. 효과 대상 ---------------------------------------------------
+   배경에만 거는 효과는 배경 자체가 레이어여야 가능하다.
+   그래서 데모 패널은 자기 안에 배경을 가진다. */
+
+.blp-demo-backdrop {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  z-index: 0;
+}
+
+/* 배경 레이어는 절대 위치라 z-index 0 으로 그려진다.
+   본문을 그 위에 올려야 글자가 보인다. */
+.blp-demo-window > .window__body {
+  position: relative;
+  z-index: 1;
+}
+
+.blp-demo-backdrop > img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.blp-demo-backdrop--dim   { filter: brightness(.5) saturate(.35); }
+.blp-demo-backdrop--blur  { filter: blur(6px) brightness(.85); }
+.blp-demo-backdrop--mono  { filter: grayscale(1) contrast(1.3); }
+.blp-demo-backdrop--invert{ filter: invert(1); }
+.blp-demo-backdrop--shift { filter: hue-rotate(150deg) saturate(1.6); }
+
+/* 페이지 배경 레이어에도 같은 축을 준다 */
+.blp-backdrop--fx-dim   { filter: brightness(.55) saturate(.4); }
+.blp-backdrop--fx-blur  { filter: blur(7px); }
+.blp-backdrop--fx-mono  { filter: grayscale(1) contrast(1.25); }
+
+/* ---- 조합 ---------------------------------------------------------------
+   · fill  없음 + 효과 없음 = 순수한 창
+   · fill  없음 + 효과 창만 = 뒤 픽셀을 창에서 변형 (§10 A)
+   · fill  반투명          = 뒤를 일정 톤으로 덮는다
+   · fill  반투명 + 효과   = 덮으면서 뒤를 변형한다
+   배경에만 효과를 거는 것은 항상 가능하며, 그때 fill 은 보통 없다. */
