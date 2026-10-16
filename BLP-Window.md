@@ -672,27 +672,10 @@ border-radius: 999px;   /* 이것도 가능하다 */
 ## 11. 파일 구조
 
 ```
-blp-window/
-├── blp.css                  디자인 언어의 단일 진실 원천
-├── index.html               00 개요
-├── anatomy.html             01 창 규격
-├── sizes.html               02 크기
-├── components.html          03 요소
-├── border.html              04 태두리 요소
-├── radius.html              05 모서리
-├── media.html               06 배경 미디어
-├── effect.html              07 효과
-├── gap.html                 08 창과 배경
-├── light.html               09 라이트모드
-├── free.html                10 자유 요소
-├── all.html                 아홉 페이지 전체가 한 파일에 (링크 0개)
-└── media/
-    ├── wallpaper.jpg        다크 정지 배경
-    ├── wallpaper.mp4        다크 6초 무음 루프
-    └── light-wallpaper.jpg  라이트모드용 밝은 톤 배경
+blp.css                  디자인 언어의 단일 진실 원천
 ```
 
-값을 고칠 곳은 `blp.css` 하나뿐이다. 나머지 다섯 개 페이지는 토큰을 참조할 뿐이다.
+값을 고칠 곳은 `blp.css` 하나뿐이다. 제작할 모든 페이지는 토큰을 참조할 뿐이다.
 
 ---
 
